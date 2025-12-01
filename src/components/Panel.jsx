@@ -1,8 +1,15 @@
-function Panel({ title, subtitle, action, children, className = "" }) {
+function Panel({
+  title,
+  subtitle,
+  action,
+  children,
+  className = "",
+  ...rest
+}) {
   const panelClass = ["panel", className].filter(Boolean).join(" ");
 
   return (
-    <section className={panelClass}>
+    <section className={panelClass} {...rest}>
       {(title || subtitle || action) && (
         <div className="panel-header">
           <div className="panel-titles">

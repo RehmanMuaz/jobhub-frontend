@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import logo from "./assets/logo-bg.png";
 import "./App.css";
 import UrlInputForm from "./components/UrlInputForm.jsx";
 import JobsTable from "./components/JobsTable.jsx";
+import Panel from "./components/Panel.jsx";
+import MetricCard from "./components/MetricCard.jsx";
+import StatusPill from "./components/StatusPill.jsx";
 import { getJobs, scrapeJobUrl } from "./services/jobsApi.js";
 
-// Mock data for development (replace with API later)
 const mockJobs = [
   {
     id: 1,
@@ -53,6 +55,23 @@ const mockJobs = [
     salaryEstimate: "$120,000",
   },
 ];
+
+const techStack = [
+  "FastAPI",
+  "Pydantic",
+  "PostgreSQL",
+  "React",
+  "Docker",
+  "OpenAI",
+  "Uvicorn",
+  "Jira",
+  "GitHub",
+];
+
+function getStatusKey(status) {
+  if (!status) return "new";
+  return String(status).toLowerCase();
+}
 
 function App() {
   const [jobs, setJobs] = useState([]);
@@ -126,46 +145,237 @@ function App() {
     }
   }
 
+  const statusCounts = useMemo(() => {
+    const counts = {
+      new: 0,
+      applied: 0,
+      rejected: 0,
+      interview: 0,
+      offer: 0,
+    };
+    (jobs || []).forEach((job) => {
+      const key = getStatusKey(job.status);
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [jobs]);
+
+  const averageScore = useMemo(() => {
+    const scores = (jobs || [])
+      .map((job) => Number(job.score))
+      .filter((score) => !Number.isNaN(score));
+    if (!scores.length) return null;
+    const sum = scores.reduce((acc, val) => acc + val, 0);
+    return Math.round(sum / scores.length);
+  }, [jobs]);
+
+  const totalTracked = (jobs?.length || 0) + pendingSubmissions.length;
+  const interviewCount = statusCounts.interview || 0;
+  const offerCount = statusCounts.offer || 0;
+
+  const metrics = [
+    {
+      label: "Total tracked",
+      value: totalTracked,
+      hint: `${pendingSubmissions.length} pending job scrapes`,
+      trend:
+        pendingSubmissions.length > 0 ? `+${pendingSubmissions.length}` : null,
+      accent: "primary",
+    },
+    {
+      label: "Interviews",
+      value: interviewCount,
+      hint: "Moving through the funnel",
+      trend: interviewCount > 0 ? "+on schedule" : null,
+      accent: "accent",
+    },
+    {
+      label: "Average fit",
+      value: averageScore !== null ? `${averageScore}%` : "Pending",
+      hint: "Based on AI scoring",
+      trend:
+        averageScore !== null
+          ? `${averageScore - 70 >= 0 ? "+" : ""}${averageScore - 70}% vs target`
+          : null,
+      accent: "muted",
+    },
+    {
+      label: "Offers",
+      value: offerCount,
+      hint: "Ready for decision",
+      trend: offerCount > 0 ? "+progress" : null,
+      accent: "success",
+    },
+  ];
+
+  const topJob = useMemo(() => {
+    if (!jobs?.length) return null;
+    return [...jobs].sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+  }, [jobs]);
+
   return (
-    <>
-      <div>
-        <section style={{ marginBottom: "50px" }}>
-          <img className="logo" src={logo} alt="Logo" />
-          <h1>JobHub</h1>
-          <h2 style={{ marginBottom: "1em" }}>Demo</h2>
-          <b style={{ marginBottom: "50px" }}>
-            A demo app showcasing microservices, scraping, and AI-driven
-            insights for managing job applications efficiently.
-          </b>
-        </section>
-        <section className="tech-badges">
-          <h2>Tech Stack</h2>
-          <div className="badges">
-            <span className="badge python">Python</span>
-            <span className="badge fastapi">FastAPI</span>
-            <span className="badge pydantic">Pydantic</span>
-            <span className="badge html">HTML</span>
-            <span className="badge css">CSS</span>
-            <span className="badge js">React</span>
-            <span className="badge docker">Docker</span>
-            <span className="badge uvicorn">Uvicorn</span>
-            <span className="badge postgres">PostgreSQL</span>
-            <span className="badge github">GitHub</span>
-            <span className="badge jira">Jira</span>
-            <span className="badge openai">OpenAI API</span>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <img className="brand-mark" src={logo} alt="JobHub logo" />
+          <div>
+            <h1 className="brand-title">JobHub</h1>
           </div>
-        </section>
-        <section className="dashboard">
-          <UrlInputForm onSubmit={handleUrlSubmit} />
-          <JobsTable
-            jobs={jobs}
-            loading={loading}
-            error={error}
-            pendingSubmissions={pendingSubmissions}
-          />
-        </section>
-      </div>
-    </>
+        </div>
+
+        <div className="sidebar-section">
+          <p className="eyebrow">Navigation</p>
+          <div className="pill-nav">
+            <button type="button" className="pill-nav-item active">
+              Overview
+            </button>
+            <button type="button" className="pill-nav-item inactive disabled">
+              Insights <span className="pill-badge">Coming soon</span>
+            </button>
+            <button type="button" className="pill-nav-item inactive disabled">
+              Automation <span className="pill-badge">Coming soon</span>
+            </button>
+            <button type="button" className="pill-nav-item inactive disabled">
+              Settings <span className="pill-badge">Coming soon</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <p className="eyebrow">Tech stack</p>
+          <div className="badge-grid">
+            {techStack.map((item) => (
+              <span key={item} className="tech-chip">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="sidebar-footer">
+          <p className="muted">
+            Muaz Rehman 2025 &#8226; Built with FastAPI & React
+          </p>
+        </div>
+      </aside>
+
+      <main className="dashboard-main">
+        <header className="page-header">
+          <div>
+            <h2>Job Dashboard</h2>
+            <p className="muted">
+              Scrape, and monitor job applications.
+            </p>
+          </div>
+          <div className="header-actions">
+            <a className="ghost-button" href="#jobs">
+              View Jobs
+            </a>
+            <a className="primary-button" href="#capture">
+              Add job
+            </a>
+          </div>
+        </header>
+
+        <div className="metric-grid">
+          {metrics.map((metric) => (
+            <MetricCard
+              key={metric.label}
+              label={metric.label}
+              value={metric.value}
+              hint={metric.hint}
+              trend={metric.trend}
+              accent={metric.accent}
+            />
+          ))}
+        </div>
+
+        <div className="panels-grid">
+          <div id="capture">
+            <Panel
+              title="Capture"
+              subtitle="Scrape a new posting"
+              action={<StatusPill status="new" label="Live scrape" subtle />}
+            >
+              <UrlInputForm onSubmit={handleUrlSubmit} />
+            </Panel>
+          </div>
+
+          <Panel
+            title="Insight"
+            subtitle="Highest-fit role"
+            action={
+              <span className="pill subtle">
+                {averageScore !== null ? "AI scoring active" : "Waiting on data"}
+              </span>
+            }
+            className="insight-panel"
+          >
+            {topJob ? (
+              <div className="insight">
+                <div>
+                  <p className="eyebrow">{topJob.company}</p>
+                  <h4>{topJob.position}</h4>
+                  <p className="muted">
+                    Offer potential based on compensation and application stage.
+                  </p>
+                </div>
+                <div className="insight-meta">
+                  <StatusPill status={topJob.status} label={topJob.status} />
+                  <div className="score-container compact">
+                    <div className="score-bar">
+                      <div
+                        className="score-bar-fill"
+                        style={{ width: `${topJob.score || 0}%` }}
+                      />
+                    </div>
+                    <span className="score-label">{topJob.score}% match</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="muted">Add a posting to start seeing highlights.</p>
+            )}
+          </Panel>
+
+          <Panel
+            id="jobs"
+            title="Jobs"
+            subtitle="Applications"
+            className="pipeline-panel"
+            action={
+              <div className="status-legend">
+                <StatusPill
+                  status="applied"
+                  label={`Applied: ${statusCounts.applied || 0}`}
+                  subtle
+                  size="sm"
+                />
+                <StatusPill
+                  status="interview"
+                  label={`Interview: ${interviewCount}`}
+                  subtle
+                  size="sm"
+                />
+                <StatusPill
+                  status="offer"
+                  label={`Offers: ${offerCount}`}
+                  subtle
+                  size="sm"
+                />
+              </div>
+            }
+          >
+            <JobsTable
+              jobs={jobs}
+              loading={loading}
+              error={error}
+              pendingSubmissions={pendingSubmissions}
+            />
+          </Panel>
+        </div>
+      </main>
+    </div>
   );
 }
 
