@@ -8,23 +8,34 @@ function UrlInputForm({ onSubmit }) {
     if (onSubmit) {
       onSubmit(url);
     } else {
-      // Fallback: simple demo behavior
       // eslint-disable-next-line no-alert
       alert(`Submitted URL: ${url}`);
     }
+    setUrl("");
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-      <input
-        type="url"
-        placeholder="Enter job posting URL"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        required
-        style={{ flex: 1, padding: 8 }}
-      />
-      <button type="submit">Submit</button>
+    <form className="url-form" onSubmit={handleSubmit}>
+      <label className="input-label" htmlFor="job-url">
+        Job posting URL
+      </label>
+      <div className="url-form-row">
+        <input
+          id="job-url"
+          className="text-input"
+          type="url"
+          placeholder="Paste a LinkedIn, Wellfound, Indeed, or Lever link"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          required
+        />
+        <button className="primary-button" type="submit">
+          Add job
+        </button>
+      </div>
+      <p className="input-hint">
+        We will scrape the posting, analyze the role, and add it to your pipeline.
+      </p>
     </form>
   );
 }
