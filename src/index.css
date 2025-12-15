@@ -10,18 +10,18 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --page-gradient: linear-gradient(180deg, #05060c 0%, #0a0d18 45%, #070911 100%);
+  --page-gradient: linear-gradient(180deg, #08090a 0%, #0d0d0f 45%, #0b0b0b 100%);
   --sidebar-bg: rgba(7, 9, 17, 0.92);
-  --panel: #0e1220;
-  --panel-strong: #0b0f1c;
+  --panel: #1c1d23;
+  --panel-strong: #111215;
   --text-primary: #e8e9f1;
-  --muted: #9aa3b5;
-  --accent: #a45bff;
-  --accent-strong: #6f6dfb;
+  --muted: #9ab3b5;
+  --accent: #5bc2da;
+  --accent-strong: #33daff;
   --success: #4ade80;
   --danger: #ef4444;
   --border: #1b1f2b;
-  --border-strong: #22273a;
+  --border-strong: #1a1c22;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
