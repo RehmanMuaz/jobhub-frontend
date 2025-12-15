@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import logo from "./assets/logo-bg.png";
+import logo from "./assets/logo-new.svg";
 import "./App.css";
 import UrlInputForm from "./components/UrlInputForm.jsx";
 import JobsTable from "./components/JobsTable.jsx";
 import Panel from "./components/Panel.jsx";
-import MetricCard from "./components/MetricCard.jsx";
 import StatusPill from "./components/StatusPill.jsx";
 import { getJobs, scrapeJobUrl } from "./services/jobsApi.js";
 
@@ -78,6 +77,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingSubmissions, setPendingSubmissions] = useState([]);
+  const [navCollapsed] = useState(false);
 
   const useMock =
     !import.meta.env.VITE_JOBS_API_URL && !import.meta.env.VITE_API_BASE_URL;
@@ -119,6 +119,8 @@ function App() {
       )
     );
   }, [jobs, pendingSubmissions.length]);
+
+  const refreshJobs = () => reloadJobs({ current: false });
 
   async function handleUrlSubmit(value) {
     const placeholder = {
@@ -214,114 +216,46 @@ function App() {
   }, [jobs]);
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <img className="brand-mark" src={logo} alt="JobHub logo" />
-          <div>
-            <h1 className="brand-title">JobHub</h1>
-          </div>
-        </div>
-
-        <div className="sidebar-section">
-          <p className="eyebrow">Navigation</p>
-          <div className="pill-nav">
-            <button type="button" className="pill-nav-item active">
-              Overview
-            </button>
-            <button type="button" className="pill-nav-item inactive disabled">
-              Insights <span className="pill-badge">Coming soon</span>
-            </button>
-            <button type="button" className="pill-nav-item inactive disabled">
-              Automation <span className="pill-badge">Coming soon</span>
-            </button>
-            <button type="button" className="pill-nav-item inactive disabled">
-              Settings <span className="pill-badge">Coming soon</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="sidebar-section">
-          <p className="eyebrow">Tech stack</p>
-          <div className="badge-grid">
-            {techStack.map((item) => (
-              <span key={item} className="tech-chip">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="sidebar-footer">
-          <p className="muted">
-            Muaz Rehman 2025 &#8226; Built with FastAPI & React
-          </p>
-        </div>
-      </aside>
-
+    <div className="app-shell full-width">
       <main className="dashboard-main">
         <header className="page-header">
-          <div>
-            <h2>Job Dashboard</h2>
-            <p className="muted">
-              Scrape, and monitor job applications.
-            </p>
+          <div className="stack">
+            <h2 className="header-stack-text">Dashboard</h2>
+            <p className="muted">Track applications at a glance.</p>
+          </div>
+          <div className="page-header-title">
+            <img src={logo} alt="JobHub logo" className="inline-logo prominent-logo" />
           </div>
           <div className="header-actions">
             <a className="ghost-button" href="#jobs">
               View Jobs
             </a>
-            <a className="primary-button" href="#capture">
+            <a className="accent-button" href="#capture">
               Add job
             </a>
           </div>
         </header>
 
-        <div className="metric-grid">
-          {metrics.map((metric) => (
-            <MetricCard
-              key={metric.label}
-              label={metric.label}
-              value={metric.value}
-              hint={metric.hint}
-              trend={metric.trend}
-              accent={metric.accent}
-            />
-          ))}
-        </div>
-
-        <div className="panels-grid">
-          <div id="capture">
-            <Panel
-              title="Capture"
-              subtitle="Scrape a new posting"
-              action={<StatusPill status="new" label="Live scrape" subtle />}
-            >
-              <UrlInputForm onSubmit={handleUrlSubmit} />
-            </Panel>
-          </div>
-
+        <div className="actions-row" id="capture">
           <Panel
-            title="Insight"
-            subtitle="Highest-fit role"
-            action={
-              <span className="pill subtle">
-                {averageScore !== null ? "AI scoring active" : "Waiting on data"}
-              </span>
-            }
-            className="insight-panel"
+            subtitle="Add Job Posting"
+            className="capture-panel"
           >
+            <UrlInputForm onSubmit={handleUrlSubmit} />
+          </Panel>
+
+          <div className="insight-inline">
+            <div className="insight-inline__header">
+              <span className="pill subtle">Insights</span>
+            </div>
             {topJob ? (
-              <div className="insight">
-                <div>
-                  <p className="eyebrow">{topJob.company}</p>
-                  <h4>{topJob.position}</h4>
-                  <p className="muted">
-                    Offer potential based on compensation and application stage.
-                  </p>
+              <div className="insight-inline__row">
+                <div className="insight-inline__title">
+                  <span className="eyebrow">{topJob.company}</span>
+                  <strong>{topJob.position}</strong>
                 </div>
-                <div className="insight-meta">
-                  <StatusPill status={topJob.status} label={topJob.status} />
+                <div className="insight-inline__meta">
+                  <StatusPill status={topJob.status} label={topJob.status} subtle size="sm" />
                   <div className="score-container compact">
                     <div className="score-bar">
                       <div
@@ -329,51 +263,65 @@ function App() {
                         style={{ width: `${topJob.score || 0}%` }}
                       />
                     </div>
-                    <span className="score-label">{topJob.score}% match</span>
+                    <span className="score-label">
+                      {topJob.score !== null && topJob.score !== undefined
+                        ? `${topJob.score}%`
+                        : "Pending"}
+                    </span>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="muted">Add a posting to start seeing highlights.</p>
+              <p className="muted insight-inline__placeholder">No insights yet.</p>
             )}
-          </Panel>
 
-          <Panel
-            id="jobs"
-            title="Jobs"
-            subtitle="Applications"
-            className="pipeline-panel"
-            action={
-              <div className="status-legend">
-                <StatusPill
-                  status="applied"
-                  label={`Applied: ${statusCounts.applied || 0}`}
-                  subtle
-                  size="sm"
-                />
-                <StatusPill
-                  status="interview"
-                  label={`Interview: ${interviewCount}`}
-                  subtle
-                  size="sm"
-                />
-                <StatusPill
-                  status="offer"
-                  label={`Offers: ${offerCount}`}
-                  subtle
-                  size="sm"
-                />
-              </div>
-            }
-          >
-            <JobsTable
-              jobs={jobs}
-              loading={loading}
-              error={error}
-              pendingSubmissions={pendingSubmissions}
-            />
-          </Panel>
+            <div className="mini-stats">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="mini-stat">
+                  <span className="mini-stat__label">{metric.label}</span>
+                  <span className="mini-stat__value">{metric.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+
+        <Panel
+          id="jobs"
+          title="Jobs"
+          subtitle="Applications"
+          className="pipeline-panel"
+          action={
+            <div className="status-legend">
+              <StatusPill
+                status="applied"
+                label={`Applied: ${statusCounts.applied || 0}`}
+                subtle
+                size="sm"
+              />
+              <StatusPill
+                status="interview"
+                label={`Interview: ${interviewCount}`}
+                subtle
+                size="sm"
+              />
+              <StatusPill
+                status="offer"
+                label={`Offers: ${offerCount}`}
+                subtle
+                size="sm"
+              />
+            </div>
+          }
+        >
+          <JobsTable
+            jobs={jobs}
+            loading={loading}
+            error={error}
+            pendingSubmissions={pendingSubmissions}
+            onStatusUpdated={refreshJobs}
+          />
+        </Panel>
       </main>
     </div>
   );

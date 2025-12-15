@@ -11,7 +11,22 @@ function normalizeJob(raw) {
     status: raw?.status ?? raw?.currentStatus ?? raw?.state ?? "",
     position: raw?.position ?? raw?.title ?? raw?.role ?? "",
     score: raw?.score ?? raw?.fitScore ?? raw?.matchScore ?? "",
-    salaryPosted: raw?.salaryPosted ?? raw?.postedSalary ?? raw?.salary ?? "",
+    // Map salary fields from the API to both generic and display-friendly keys.
+    salary:
+      raw?.salary ??
+      raw?.salaryPosted ??
+      raw?.postedSalary ??
+      raw?.salary_posted ??
+      "",
+    salary_predicted:
+      raw?.salary_predicted ??
+      raw?.salaryPredicted ??
+      raw?.salaryEstimate ??
+      raw?.estimatedSalary ??
+      raw?.salaryRange ??
+      "",
+    salaryPosted:
+      raw?.salaryPosted ?? raw?.postedSalary ?? raw?.salary ?? "",
     salaryEstimate:
       raw?.salaryEstimate ?? raw?.estimatedSalary ?? raw?.salaryRange ?? "",
     snapshot:
@@ -90,4 +105,27 @@ export async function scrapeJobUrl(urlToScrape) {
   } catch (e) {
     return { ok: true };
   }
+}
+
+export async function updateJobStatus(jobId, status) {
+  if (!jobId || !status) throw new Error("jobId and status are required");
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL || "").trim();
+  const dev = import.meta.env.DEV;
+  const effectiveBase = dev
+    ? baseUrl.startsWith("/")
+      ? baseUrl
+      : "/api/v1"
+    : baseUrl;
+  const url = `${effectiveBase.replace(/\/$/, "")}/job-postings/${jobId}/status`;
+
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(`Failed to update status: ${res.status}`);
+  return res.json();
 }

@@ -8,6 +8,8 @@ import {
   FaRegCheckCircle,
   FaRegUser,
 } from "react-icons/fa";
+import { createPortal } from "react-dom";
+import { updateJobStatus } from "../services/jobsApi.js";
 import StatusPill from "./StatusPill.jsx";
 
 const STATUS_OPTIONS = ["New", "Applied", "Rejected", "Interview", "Offer"];
@@ -52,9 +54,16 @@ function openSnapshot(html) {
   }
 }
 
-function JobsTable({ jobs, loading, error, pendingSubmissions = [] }) {
+function JobsTable({
+  jobs,
+  loading,
+  error,
+  pendingSubmissions = [],
+  onStatusUpdated = () => {},
+}) {
   const [statusById, setStatusById] = useState({});
   const [openJobId, setOpenJobId] = useState(null);
+  const [menuPos, setMenuPos] = useState(null);
 
   useEffect(() => {
     const initial = {};
@@ -65,39 +74,73 @@ function JobsTable({ jobs, loading, error, pendingSubmissions = [] }) {
     setStatusById(initial);
   }, [jobs]);
 
-  const handleStatusChange = (jobId, value) => {
-    setStatusById((prev) => ({ ...prev, [jobId]: value }));
+  const handleStatusChange = async (jobId, value) => {
+    setStatusById((prev) => ({ ...prev, [jobId]: value })); // optimistic
+    try {
+      await updateJobStatus(jobId, value);
+      onStatusUpdated();
+    } catch (err) {
+      console.error("Failed to update status", err);
+    } finally {
+      setOpenJobId(null);
+      setMenuPos(null);
+    }
+  };
+
+  const handleStatusClick = (jobId, event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nextOpen = openJobId === jobId ? null : jobId;
+    setOpenJobId(nextOpen);
+    if (nextOpen) {
+      setMenuPos({
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    } else {
+      setMenuPos(null);
+    }
   };
 
   const hasJobs = !loading && !error && jobs && jobs.length > 0;
+  const openJob =
+    hasJobs && openJobId ? jobs.find((job) => job.id === openJobId) : null;
+  const openStatusKey = openJob
+    ? getStatusKey(
+        (openJob.status && String(openJob.status).trim()) ||
+          statusById[openJob.id] ||
+          "New"
+      )
+    : null;
 
   return (
-    <div className="table-wrapper">
-      <table className="jobs-table">
-        <thead>
-          <tr>
-            <th>
-              <FaRegBuilding className="icon" /> Company
-            </th>
-            <th>
-              <FaRegCheckCircle className="icon" /> Status
-            </th>
-            <th>
-              <FaRegUser className="icon" /> Position
-            </th>
-            <th>
-              <FaRegStar className="icon" /> Score
-            </th>
-            <th>
-              <FaDollarSign className="icon" /> Salary (Posted)
-            </th>
-            <th>
-              <FaCommentDollar className="icon" /> Salary (Estimate)
-            </th>
-            <th>Links</th>
-          </tr>
-        </thead>
-        <tbody>
+    <>
+      <div className="table-wrapper">
+        <table className="jobs-table">
+          <thead>
+            <tr>
+              <th>
+                <FaRegBuilding className="icon" /> Company
+              </th>
+              <th>
+                <FaRegCheckCircle className="icon" /> Status
+              </th>
+              <th>
+                <FaRegUser className="icon" /> Position
+              </th>
+              <th>
+                <FaRegStar className="icon" /> Score
+              </th>
+              <th>
+                <FaDollarSign className="icon" /> Salary (Posted)
+              </th>
+              <th>
+                <FaCommentDollar className="icon" /> Salary (Estimate)
+              </th>
+              <th>Links</th>
+            </tr>
+          </thead>
+          <tbody>
           {pendingSubmissions.map((pending) => (
             <tr key={pending.id} className="pending-row">
               <td>
@@ -168,14 +211,17 @@ function JobsTable({ jobs, loading, error, pendingSubmissions = [] }) {
           )}
           {hasJobs &&
             jobs.map((job) => {
-              const status = statusById[job.id] || "New";
+              const status =
+                (job.status && String(job.status).trim()) ||
+                statusById[job.id] ||
+                "New";
               const statusKey = getStatusKey(status);
               const { text: postedSalaryText, placeholder: postedIsPlaceholder } =
-                formatSalary(job.salaryPosted);
+                formatSalary(job.salary);
               const {
                 text: estimateSalaryText,
                 placeholder: estimateIsPlaceholder,
-              } = formatSalary(job.salaryEstimate);
+              } = formatSalary(job.salary_predicted);
               const { hasScore, score } = getScoreInfo(job.score);
               const scoreIsLoading = !hasScore;
 
@@ -195,30 +241,8 @@ function JobsTable({ jobs, loading, error, pendingSubmissions = [] }) {
                       <StatusPill
                         status={statusKey}
                         label={status}
-                        onClick={() =>
-                          setOpenJobId(openJobId === job.id ? null : job.id)
-                        }
+                        onClick={(e) => handleStatusClick(job.id, e)}
                       />
-                      {openJobId === job.id && (
-                        <div className="status-menu">
-                          {STATUS_OPTIONS.filter(
-                            (option) => getStatusKey(option) !== statusKey
-                          ).map((option) => (
-                            <StatusPill
-                              key={option}
-                              status={option}
-                              label={option}
-                              subtle
-                              size="sm"
-                              onClick={() => {
-                                handleStatusChange(job.id, option);
-                                setOpenJobId(null);
-                              }}
-                              className="status-option"
-                            />
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </td>
                   <td>
@@ -298,9 +322,38 @@ function JobsTable({ jobs, loading, error, pendingSubmissions = [] }) {
                 </tr>
               );
             })}
-        </tbody>
-      </table>
-    </div>
+          </tbody>
+        </table>
+      </div>
+      {openJob &&
+        menuPos &&
+        createPortal(
+          <div
+            className="status-menu status-menu-portal"
+            style={{
+              top: menuPos.top, // align to pill's top, then pull up by full height
+              left: menuPos.left,
+              minWidth: Math.max(menuPos.width || 0, 160),
+              transform: "translateY(calc(-100% - 8px))",
+            }}
+          >
+            {STATUS_OPTIONS.filter((option) => getStatusKey(option) !== openStatusKey).map(
+              (option) => (
+                <StatusPill
+                  key={option}
+                  status={option}
+                  label={option}
+                  subtle
+                  size="sm"
+                  onClick={() => handleStatusChange(openJob.id, option)}
+                  className="status-option"
+                />
+              )
+            )}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
 

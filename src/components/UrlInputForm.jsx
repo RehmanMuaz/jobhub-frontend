@@ -17,25 +17,23 @@ function UrlInputForm({ onSubmit }) {
   return (
     <form className="url-form" onSubmit={handleSubmit}>
       <label className="input-label" htmlFor="job-url">
-        Job posting URL
+        Job URL
       </label>
       <div className="url-form-row">
         <input
           id="job-url"
           className="text-input"
           type="url"
-          placeholder="Paste a LinkedIn, Wellfound, Indeed, or Lever link"
+          placeholder="Paste a job link"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           required
         />
-        <button className="primary-button" type="submit">
+        <button className="accent-button" type="submit">
           Add job
         </button>
       </div>
-      <p className="input-hint">
-        We will scrape the posting, analyze the role, and add it to your pipeline.
-      </p>
+      <p className="input-hint">Currently does not support Linkedin & Indeed.</p>
     </form>
   );
 }
